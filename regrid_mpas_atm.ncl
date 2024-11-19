@@ -36,6 +36,7 @@ gridfile = addfile(gridFilename,"r")
 lonCell = tofloat(gridfile->lonCell)
 latCell = tofloat(gridfile->latCell)
 printVarSummary(latCell)
+
 ;  ---Convert to degrees from radians
 RAD2DEG = get_r2d("float")      ; Radian to Degree
 print(RAD2DEG)
@@ -43,20 +44,26 @@ lonCell = lonCell*RAD2DEG
 latCell = latCell*RAD2DEG
 
 ;---Retrieve data
-do imem=1,5
-  dir = "/glade/derecho/scratch/huili7/ENSEMBLES/S2Scfsv2/archive/f.e23b17.FLTHIST_mpasa60.S2S.L58_S2Scfsv2.0"+imem+"/atm/hist/"  
+ensdir = "/glade/derecho/scratch/huili7/ENSEMBLES/S2Scfsv2_old/archive/"
+VARS = (/"Z500"/)
+nvars = dimsizes(VARS)
+print(nvars)
 
-  srcFileName = "f.e23b17.FLTHIST_mpasa60.S2S.L58_S2Scfsv2.0"+imem+".cam.h2a.2021-02-09-00000.nc"
-  print(dir+srcFileName)
-    
-  sfile = addfile(dir+srcFileName,"r")
-  TS    = sfile->TS
-  lat    = sfile->lat
-  lon    = sfile->lon
-  printVarSummary(lat)
+do imem=0,0
+  casename = "f.e23b17.FLTHIST_mpasa60.S2S.L58_S2Scfsv2.0"+imem
+  casedir = ensdir+casename+"/atm/hist/"  
+  srcFileName = casename+".cam.h2a.2021-02-09-00000.nc"
+  print(casedir+srcFileName)
 
-  ; -- regridding  
-  Opt                 = True                     ; Regridding optioins
+  do iv = 0, nvars-1
+    sfile = addfile(casedir+srcFileName,"r")
+    arr = sfile->$VARS(iv)$
+    lat    = sfile->lat
+    lon    = sfile->lon
+    printVarSummary(arr)
+
+   ; -- regridding  
+    Opt                 = True                     ; Regridding optioins
 
     Opt@SrcFileName     = "../MPAS_ESMF.nc"           ; output files
     Opt@SrcESMF  = True
@@ -80,10 +87,10 @@ do imem=1,5
 
 
   ;var_regrid = ESMF_regrid(TS,Opt)
-  var_regrid = ESMF_regrid_with_weights(TS,"MPAS_2_World_nomask.nc",False)
-  fout = addfile(dir+"regridded_ts_"+srcFileName,"c")
-  fout->TS = var_regrid
+    var_regrid = ESMF_regrid_with_weights(arr,"MPAS_2_World_nomask.nc",False)
+    fout = addfile(casedir+"regrid_"+VARS(iv)+"_"+srcFileName,"c")
+    fout->$VARS(iv)$ = var_regrid
 
-
+    end do
   end do
 end
